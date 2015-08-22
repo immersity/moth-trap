@@ -1,20 +1,28 @@
-char incomingByte = 0;
-
-void setup() {
-  // put your setup code here, to run once:
-    Serial.begin(9600);
-    Serial.println("Hello World");
+#include <SoftwareSerial.h>
+char incoming_char=0; //Will hold the incoming character from the Serial Port.
+SoftwareSerial cell(2,3); //Create a 'fake' serial port. Pin 2 is the Rx pin, pin 3 is the Tx pin.
+ 
+void setup()
+{
+ //Initialize serial ports for communication.
+ Serial.begin(9600);
+ cell.begin(9600);
+ Serial.println("Starting SM5100B Communication...");
 }
-
-void loop() {
-  // put your main code here, to run repeatedly:
-    if (Serial.available() > 0) 
-    {
-      // read the incoming byte:
-      incomingByte = Serial.read();
-
-      // say what you got:
-      Serial.print("I received: " + incomingByte);
-      Serial.println(incomingByte);
-    }
+ 
+void loop()
+{
+ //If a character comes in from the cellular module...
+ if(cell.available() >0)
+ {
+ incoming_char=cell.read(); //Get the character from the cellular serial port.
+ Serial.print(incoming_char); //Print the incoming character to the terminal.
+ }
+ //If a character is coming from the terminal to the Arduino...
+ if(Serial.available() >0)
+ {
+ incoming_char=Serial.read(); //Get the character coming from the terminal
+ Serial.print(incoming_char);
+ cell.print(incoming_char); //Send the character to the cellular module.
+ }
 }
