@@ -16,8 +16,11 @@ const String password = "entelpcs";
 const String ip = "54.94.157.69"; // IP address of server we're connecting to
 const String port = "8082";
 const String host = "54.94.157.69"; // required in HTTP 1.1 - what's the name of the host at this IP address?
-const String request = "GET /m/testpage.php?data=testing HTTP/1.1";
-const String useragent = "Mozilla/5.0"; // for our purposes the user agent doesn't matter - if I understand correctly it's helpful to use something generic the server will recognize
+const String request = "POST /api/users HTTP/1.1";
+const String from = "mt0001@immersity.cl";
+const String useragent = "ImmMothTrap/1.0"; // for our purposes the user agent doesn't matter - if I understand correctly it's helpful to use something generic the server will recognize
+const String contentType = "application/json";
+const String contentLength = "5";
 
 /* this will send the following packet:
  * 
@@ -70,9 +73,11 @@ void loop()
   while (1) {
     Serial.println("Checking socket status:");
     cell.println("AT+SDATASTATUS=1"); // we'll get back SOCKSTATUS and then OK
+
+    //waitFor("+STCPD:1"); // This is because the server return data when a connectio is established
+
     String sockstat = getMessage();
-    waitTil("OK");
-    cell.println("HOLA");
+    waitFor("OK");
     if (sockstat=="+SOCKSTATUS:  1,0,0104,0,0,0") {
       Serial.println("Not connected yet. Waiting 1 second and trying again.");
       delay(1000);
@@ -89,15 +94,26 @@ void loop()
   
   // we're now connected and can send HTTP packets!
   
-  int packetLength = 26+host.length()+request.length()+useragent.length(); // 26 is size of the non-variable parts of the packet, see SIZE comments below
+  String image = "12345";
+  String data = "{\"image\": \"" + image + "\"}";
+
+  int packetLength = 68+data.length()+host.length()+request.length()+useragent.length()+from.length()+String(data.length()).length()+contentType.length(); // 26 is size of the non-variable parts of the packet, see SIZE comments below
   
-  Serial.println("Sending HTTP packet...");
+  Serial.println("Sending HTTP packet..." + packetLength);
   cell.print("AT+SDATATSEND=1,"+String(packetLength)+"\r");
   waitFor('>'); // wait for GSM module to tell us it's ready to recieve the packet. NOTE: some have needed to remove this line
+
   cell.print(request+"\r\n"); // SIZE: 2
+  cell.print("From: "+from+"\r\n"); //SIZE: 8
   cell.print("Host: "+host+"\r\n"); // SIZE: 8
-  cell.print("User-Agent: "+useragent+"\r\n\r\n"); // SIZE: 16
+  cell.print("User-Agent: "+useragent+"\r\n"); // SIZE: 14
+  cell.print("Content-Type: "+contentType+"\r\n"); //SIZE: 16
+  cell.print("Content-Length: "+String(data.length())+"\r\n\r\n"); //SIZE: 20
+
+  cell.print(data);
+
   cell.write(26); // ctrl+z character: send the packet
+
   waitFor("OK");
   
   
@@ -177,7 +193,7 @@ String getMessage() {
 void waitFor(String s) {
   String message=getMessage();
   if (message != s) {
-    Serial.println("Wait, that's not what we were expecting. We wanted \""+s+"\"");
+    Serial.println("Wait, that's not what we were expecting. We wanted \""+s+"\" and we get "+message);
     cellOutputForever();
   }
   delay(100); // wait for a tiny bit before sending the next command
